@@ -3,8 +3,8 @@ sys.path.append("C:/Users/User/Desktop/Learning/Betting/kelly-criterion-staking"
 
 from oddsCheckerScraper import scrapeOddsChecker
 from SmarketsRaceBuilder import smarketsRaceBuilder
+from kellyStaking import kelly
 import betfairClient
-import kelly
 
 
 class matchedPrice:

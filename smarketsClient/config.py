@@ -1,3 +1,4 @@
 import toml
+from certification_paths import PATHS
 
-configuration = toml.load('configuration.toml')
+configuration = toml.load(PATHS["configuration"])

@@ -2,6 +2,7 @@ import json
 import pandas as pd
 import requests, json, urllib
 import datetime
+from  certifications.certification_paths import PATHS
 
 def buildURL(startTime, now, event_name):
     if (startTime.date() - now.date()) == datetime.timedelta(days=1):
@@ -50,7 +51,7 @@ class betFairClient:
 
         resp = requests.post("https://identitysso-cert.betfair.com/api/certlogin",
                      data = payload,
-                     cert = ("C:/Users/User/Desktop/Learning/Betting/trading-horse-racing/BetfairAPI/betfairDB.crt" , "C:/Users/User/Desktop/Learning/Betting/trading-horse-racing/BetfairAPI/client-2048.pem" ),
+                     cert = (PATHS["betfairdb_crt"],PATHS["betfairdb_XDB"]),
                      headers = headers)
         
         resp_json = resp.json()
@@ -321,14 +322,14 @@ class betFairClient:
         return sum(all_horses,[])
 
 
-# betCl = betFairClient()
-# betCl.login()
-# betFairPrices, urls = betCl.getAllHorsePrices(18)
+betCl = betFairClient()
+betCl.login()
+betFairPrices, urls = betCl.getAllHorsePrices(18)
 
-# for x in urls:
-#     print(x)
+for x in urls:
+    print(x)
 
-# print(len(urls))
+print(len(urls))
 
 # betCl = betFairClient()
 # betCl.login()
