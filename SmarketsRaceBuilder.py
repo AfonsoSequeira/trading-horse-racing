@@ -1,5 +1,5 @@
 import sys
-import client as sm_client
+from smarketsClient import client as sm_client
 import datetime
 import requests
 import numpy as np

@@ -1,16 +1,17 @@
-from bs4 import BeautifulSoup
-import requests
-import pandas as pd
-from datetime import datetime
-import json
 from selenium.webdriver.chrome.options import Options
-from bs4 import UnicodeDammit
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-import lxml.html as lh
-from joblib import Parallel, delayed
+from bs4 import BeautifulSoup
+from playwright.async_api import async_playwright
 import time
+import asyncio
+
+BOOKMAKERS = ["Bet365", "SkyBet", "PaddyPower", "WilliamHill", "888Sport",
+             "Betfair", "BetVictor", "Coral", "UniBet", "SpreadEx", "BetFred",
+             "BoyleSports", "10Bet", "StarSports", "BetUk", "SportingIndex", "LiveScoreBet",
+             "QuinnBet", "BetWay", "LadBrokes", "BetGoodWin", "PariMatch", "VBet",
+             "Tote", "BetFairExchange", "MatchBook"]
 
 class OddsCheckerPrice:
     
@@ -27,9 +28,33 @@ class OddsCheckerPrice:
               " Price: ", self.price,
               " ewDenom: ", self.ewDenominator,
               " ewPlaces: ", self.ewPlaces)
-        
-        
-def oddsPortalScraper(prettyHTML, bookMakerList, url, log):
+
+async def fetch(page, url):
+    response = await page.goto(url)
+    if not response.ok:
+        raise Exception(f"Failed to load {url}")
+    print(f"Loaded page: {url}")
+    return await page.inner_html('div#outer-container')
+
+async def fetch_all(browser, urls):
+    tasks = []
+    for url in urls:
+        page = await browser.new_page()
+        task = asyncio.create_task(fetch(page, url))
+        tasks.append(task)
+    res = await asyncio.gather(*tasks)
+    return res
+
+async def main(urls):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        context = await browser.new_context(user_agent= 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.517 Safari/537.36')
+        htmls = await fetch_all(context, urls)
+        await browser.close()
+
+    return htmls
+
+def scrape_odds(html_soup, bookMakerList, url, log):
     
     finalPrices = []
     
@@ -37,8 +62,8 @@ def oddsPortalScraper(prettyHTML, bookMakerList, url, log):
         for i in range(0, len(list_a), chunk_size):
             yield list_a[i:i + chunk_size]
     
-    soup = BeautifulSoup(prettyHTML, features="lxml")
-    body = soup.body
+    #soup = BeautifulSoup(prettyHTML, features="lxml")
+    body = html_soup.body
     pricesHtml = body.find_all("td", class_= lambda value: value and 
                      (value.startswith("bc bs") or value.startswith("np o") or value.startswith("o np")))
     
@@ -80,73 +105,27 @@ def oddsPortalScraper(prettyHTML, bookMakerList, url, log):
                 finalPrices.append(OddsCheckerPrice(bookMakerName,horseNames[i], price, ewDenom, ewPlaces))
                 
     return finalPrices
-
-def scrapeOddsCheckerRace(url, log = False):
     
-    bookmakers = ["Bet365", "SkyBet", "PaddyPower", "WilliamHill", "888Sport",
-             "Betfair", "BetVictor", "Coral", "UniBet", "SpreadEx", "BetFred",
-             "BoyleSports", "10Bet", "BetUk", "SportingIndex", "LiveScoreBet",
-             "QuinnBet", "BetWay", "LadBrokes", "PariMatch", "VBet",
-             "SBK", "Tote", "BetFairExchange", "Smarkets", "MatchBook"]
+def scrape_odds_checker(url_list, log=False):
+    start = time.perf_counter()
+    inner_htmls  = asyncio.run(main(url_list))
+    stop = time.perf_counter()
+    time_taken = stop - start
+    print("time taken:", time_taken)
 
-    try:
-        options = Options()
-        user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.517 Safari/537.36'
-        options.add_argument('user-agent={0}'.format(user_agent))
+    odds_checker_prices = []
+    for html, url in list(zip(inner_htmls,url_list)):
+        html_soup: BeautifulSoup = BeautifulSoup(html, 'lxml')
+        prices = scrape_odds(html_soup, BOOKMAKERS,url, log)
+        odds_checker_prices = odds_checker_prices + prices
 
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
-                            options=options)
-        driver.get(url)
-        
-        if driver.current_url == "https://www.oddschecker.com/horse-racing":
-            return []
-        else:
-            html_source_code = driver.execute_script("return document.body.innerHTML;")
-            html_soup: BeautifulSoup = BeautifulSoup(html_source_code, 'html.parser')
-            prettyHTML = html_soup.prettify()
-            driver.close()
-            
-            prices = oddsPortalScraper(prettyHTML, bookmakers,url, log)
-            
-            return prices
-    except:
-        return []
-
-def scrapeOddsChecker(urlList, log = False, isParallel = False):
-    t0 = time.time()
-    if isParallel == False:
-        prices = []
-        for i in range(0,len(urlList)):
-            print("Scraping ", i + 1, " of ", len(urlList), " urls.")
-            #need to add some validation to check whether this url exists, currenty not able to do so..
-            try:
-                racePrices = scrapeOddsCheckerRace(urlList[i], log)
-                prices = prices + racePrices
-                
-            except:
-                print(f"Error reading url: {urlList[i]}")
-                continue
-            
-    else:
-        prices = Parallel(n_jobs=-1, verbose= 5)(delayed(scrapeOddsCheckerRace)(url) for url in urlList)
-        prices = sum(prices, [])
-
-    t1 = time.time()
-    print(f"Scraped oddsPortal urls in {t1-t0} ms.")
-    return prices
+    return odds_checker_prices
 
 
-# urlList = ["https://www.oddschecker.com/horse-racing/2023-02-08-Ludlow/16:00/winner",
-#            "https://www.oddschecker.com/horse-racing/2023-02-08-Ludlow/13:25/winner",
-#             "https://www.oddschecker.com/horse-racing/2023-02-08-Ludlow/15:30/winner",
-#             "https://www.oddschecker.com/horse-racing/2023-02-08-Ludlow/14:30/winner",
-#             "https://www.oddschecker.com/horse-racing/2023-02-08-Ludlow/16:30/winner",
-#             "https://www.oddschecker.com/horse-racing/2023-02-08-Ludlow/13:55/winner",
-#             "https://www.oddschecker.com/horse-racing/2023-02-08-Ludlow/15:00/winner"]
-
-# prices = scrapeOddsChecker(urlList, bookmakers, False, True)
-# print(prices) 
-
-# from math import sqrt
-# t = Parallel(n_jobs=1)(delayed(sqrt)(i**2) for i in [1,2,3,"sd",5,6])
-# print(t)
+# if __name__ == '__main__':
+#     urls = ["https://www.oddschecker.com/horse-racing/uttoxeter/13:35/winner",
+#             "https://www.oddschecker.com/horse-racing/uttoxeter/14:10/winner",
+#             "https://www.oddschecker.com/horse-racing/ascot/16:45/winner"]  # list of urls
+    
+#     prices = scrape_odds_checker(urls,log=False)
+#     print("Finished")
