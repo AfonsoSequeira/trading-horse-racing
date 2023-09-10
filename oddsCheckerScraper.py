@@ -29,27 +29,59 @@ class OddsCheckerPrice:
               " ewDenom: ", self.ewDenominator,
               " ewPlaces: ", self.ewPlaces)
 
-async def fetch(page, url):
-    response = await page.goto(url)
-    if not response.ok:
-        raise Exception(f"Failed to load {url}")
-    print(f"Loaded page: {url}")
-    return await page.inner_html('div#outer-container')
+#version where the browser and context are always the same, gets blocked!
+# async def fetch(browser, url):
+#     async with semaphore:
+#         page = await browser.new_page()
+#         response = await page.goto(url)
+#         if not response.ok:
+#             raise Exception(f"Failed to load {url}")
+#         print(f"Loaded page: {url}")
+#         return await page.inner_html('div#outer-container')
 
+# async def fetch_all(browser, urls):
+#     tasks = []
+#     for url in urls:
+#         task = asyncio.create_task(fetch(browser, url))
+#         tasks.append(task)
+#     res = await asyncio.gather(*tasks)
+#     return res
+
+# async def main(urls):
+#     async with async_playwright() as p:
+#         browser = await p.chromium.launch(headless=True)
+#         context = await browser.new_context(user_agent= 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.517 Safari/537.36')
+#         htmls = await fetch_all(context, urls)
+#         await browser.close()
+
+#     return htmls
+
+semaphore = asyncio.Semaphore(20)
+
+async def fetch(browser, url):
+    async with semaphore:  # This will limit the number of concurrent tasks
+        context = await browser.new_context(user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.517 Safari/537.36')
+        page = await context.new_page()
+        
+        response = await page.goto(url)
+        if not response.ok:
+            await context.close()
+            raise Exception(f"Failed to load {url}")
+
+        print(f"Loaded page: {url}")
+        html_content = await page.inner_html('div#outer-container')
+        
+        await context.close()  # Close the context after fetching to free up resources
+        return html_content
+    
 async def fetch_all(browser, urls):
-    tasks = []
-    for url in urls:
-        page = await browser.new_page()
-        task = asyncio.create_task(fetch(page, url))
-        tasks.append(task)
-    res = await asyncio.gather(*tasks)
-    return res
+    tasks = [asyncio.create_task(fetch(browser, url)) for url in urls]
+    return await asyncio.gather(*tasks)
 
 async def main(urls):
     async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        context = await browser.new_context(user_agent= 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.517 Safari/537.36')
-        htmls = await fetch_all(context, urls)
+        browser = await p.chromium.launch(headless=True)
+        htmls = await fetch_all(browser, urls)
         await browser.close()
 
     return htmls
@@ -122,10 +154,44 @@ def scrape_odds_checker(url_list, log=False):
     return odds_checker_prices
 
 
-# if __name__ == '__main__':
-#     urls = ["https://www.oddschecker.com/horse-racing/uttoxeter/13:35/winner",
-#             "https://www.oddschecker.com/horse-racing/uttoxeter/14:10/winner",
-#             "https://www.oddschecker.com/horse-racing/ascot/16:45/winner"]  # list of urls
+if __name__ == '__main__':
+    urls =  [
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/16:40/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/17:45/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/17:15/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/14:55/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/16:05/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/15:30/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/14:20/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/15:05/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/15:40/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/16:47/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/16:15/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/14:30/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/17:22/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/17:30/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/19:00/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/16:55/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/20:30/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/18:30/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/20:00/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/19:30/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/18:00/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/17:05/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/19:15/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/17:40/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/18:45/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/16:30/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/15:20/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/15:55/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/18:15/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/17:00/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/16:25/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/17:35/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/15:15/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/15:50/winner",
+        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/14:40/winner",
+        ]
     
-#     prices = scrape_odds_checker(urls,log=False)
-#     print("Finished")
+    prices = scrape_odds_checker(urls,log=False)
+    print("Finished")

@@ -2,7 +2,12 @@ import json
 import pandas as pd
 import requests, json, urllib
 import datetime
-from  certifications.certification_paths import PATHS
+# from  certifications.certification_paths import PATHS
+
+CERTIFICATIONS_PATH = "C:/MyDevelopment/betfaircertifications/"
+
+# "client2048":"C:/Users/User/Desktop/Betting/certifications/client-2048.pem",
+# "configuration":"C:/Users/User/Desktop/Betting/certifications/configuration.toml"
 
 def buildURL(startTime, now, event_name):
     if (startTime.date() - now.date()) == datetime.timedelta(days=1):
@@ -46,12 +51,19 @@ class betFairClient:
         self.headers = None#{"X-Application" : self.app_key, "Content-Type" : "application/x-www-form-urlencoded"}
         
     def login(self):
+        with open(CERTIFICATIONS_PATH + "betfair_details.json") as fh:
+            login_details = json.load(fh)
+
+        self.username = login_details["username"]
+        self.password = login_details["pwd"]
+        self.app_key = login_details["application_key"]
+
         payload = "username=" + self.username + "&password=" + self.password
         headers = {"X-Application" : self.app_key, "Content-Type" : "application/x-www-form-urlencoded"}
 
         resp = requests.post("https://identitysso-cert.betfair.com/api/certlogin",
                      data = payload,
-                     cert = (PATHS["betfairdb_crt"],PATHS["betfairdb_XDB"]),
+                     cert = (CERTIFICATIONS_PATH + "betfairDB.crt", CERTIFICATIONS_PATH + "client-2048.pem"),
                      headers = headers)
         
         resp_json = resp.json()
@@ -97,7 +109,7 @@ class betFairClient:
             
         return events
 
-    def getEventUrls(self, event_id, event_name, t_thresh):
+    def getEventUrls(self, event_id, event_name, t_thresh, is_bst):
 
         time_min = (datetime.datetime.now() + datetime.timedelta(minutes = 10)).strftime('%Y-%m-%dT%H:%M:%SZ')
         time_max = (datetime.datetime.now() + datetime.timedelta(hours = t_thresh)).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -130,16 +142,18 @@ class betFairClient:
         markets = markets_req.json()['result']
         race_times = list(set([market['marketStartTime'] for market in markets]))
         race_times = [datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S.%fZ") for x in race_times]
+        if is_bst == True:
+            race_times = [r + datetime.timedelta(hours = 1) for r in race_times]
 
         now = datetime.datetime.now()
         urls = [buildURL(x, now, event_name) for x in race_times]
 
         return urls
 
-    def getAllBetfairUrls(self,t_thresh):
+    def getAllBetfairUrls(self,t_thresh, is_bst):
 
         events = self.getHorseRacingEvents()
-        url_list = [self.getEventUrls(event_id, event_name, t_thresh) for event_name, event_id in events]
+        url_list = [self.getEventUrls(event_id, event_name, t_thresh, is_bst) for event_name, event_id in events]
         url_list = sum(url_list, [])
 
         return url_list
@@ -322,25 +336,13 @@ class betFairClient:
         return sum(all_horses,[])
 
 
-betCl = betFairClient()
-betCl.login()
-betFairPrices, urls = betCl.getAllHorsePrices(18)
+if __name__ == '__main__':
 
-for x in urls:
-    print(x)
+    betCl = betFairClient()
+    betCl.login()
+    betFairPrices = betCl.getAllHorsePrices(24)
+    urls = betCl.getAllBetfairUrls(24, is_bst=True)
 
-print(len(urls))
+    for x in urls:
+        print(x)
 
-# betCl = betFairClient()
-# betCl.login()
-# urls = betCl.getAllBetfairUrls(24)
-# print(urls)
-
-# betCl = betFairClient()
-# betCl.login()
-
-# events = betCl.getHorseRacingEvents()
-# eventname , eventid = events[0]
-# betCl.getEventMarketTypes(event_id=eventid,event_name=eventname)
-# res, _ = betCl.getEventMarkets(eventid, 24)
-# res = betCl.getMarketPrices(res[0][0])

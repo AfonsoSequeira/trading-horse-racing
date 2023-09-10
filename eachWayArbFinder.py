@@ -1,10 +1,10 @@
 import sys
 sys.path.append("C:/Users/User/Desktop/Learning/Betting/kelly-criterion-staking")
 
-from oddsCheckerScraper import scrapeOddsChecker
-from SmarketsRaceBuilder import smarketsRaceBuilder
+from oddsCheckerScraper import scrape_odds_checker
+#from SmarketsRaceBuilder import smarketsRaceBuilder
 from kellyStaking import kelly
-import betfairClient
+from betfairClient.betfairClient import betFairClient
 
 
 class matchedPrice:
@@ -202,27 +202,27 @@ def checkValueRaces(bookieRaces, exchangeRaces,liquidity_settings, frac_kelly_va
              
     return valueFinds, assessedMarketList
 
-def runValueFinder(h_thresh,liquidity_settings,frac_kelly, logging, is_parallel):
-    
-    betCl = betfairClient.betFairClient()
+def runValueFinder(h_thresh, is_bst,liquidity_settings,frac_kelly, logging, is_parallel):
+
+    betCl = betFairClient()
     betCl.login()
-    urls = betCl.getAllBetfairUrls(h_thresh)
-    #urls = urls[0:2]
+    urls = betCl.getAllBetfairUrls(h_thresh, is_bst)
 
     if len(urls) == 0:
         print("no races within time frame")
         return betFairPrices, None
     else:
         for url in urls: print(url)
-        oddsCheckerPrices = scrapeOddsChecker(urls, logging, is_parallel)
+        oddsCheckerPrices = scrape_odds_checker(urls, logging)
         betFairPrices = betCl.getAllHorsePrices(h_thresh)
         valueFinds, allMarkets = checkValueRaces(oddsCheckerPrices, betFairPrices,liquidity_settings, frac_kelly)
         
         return betFairPrices, oddsCheckerPrices, valueFinds, allMarkets
 
-# liq_settings = {"winMarketSpreadLimit": 1.0 , "placeMarketSpreadLimit": 1.0}
-# betFairPrices, oddsCheckerPrices, valueFinds, allMarkets = runValueFinder(24,liq_settings,1.0, False, True)
-# for val in valueFinds:
-#     val.printInfo()
+if __name__ == '__main__':
+    liq_settings = {"winMarketSpreadLimit": 1.0 , "placeMarketSpreadLimit": 1.0}
+    betFairPrices, oddsCheckerPrices, valueFinds, allMarkets = runValueFinder(24, True, liq_settings,1.0, False, True)
+    for val in valueFinds:
+        val.printInfo()
 
 
