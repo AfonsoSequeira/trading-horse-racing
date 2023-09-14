@@ -72,15 +72,22 @@ class betFairClient:
         self.bet_url = "https://api.betfair.com/exchange/betting/json-rpc/v1/"
         self.headers = {"X-Application": self.app_key, "X-Authentication": SSOID , "content-type": "application/json"}
         
-    def getHorseRacingEvents(self):
-        today = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')
-        tomorrow = (datetime.datetime.now() + datetime.timedelta(hours = 24)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    def getHorseRacingEvents(self, is_bst):
+        time_min = datetime.datetime.now()
+        time_max = (datetime.datetime.now() + datetime.timedelta(hours = 24))
+
+        if is_bst == True:
+            time_min = time_min - datetime.timedelta(hours = 1)
+            time_max = time_max - datetime.timedelta(hours = 1)
+        
+        time_min = time_min.strftime('%Y-%m-%dT%H:%M:%SZ')
+        time_max = time_max.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         event_filter = {
             'filter' : {
                 "eventTypeIds":[7],
                 "marketCountries":["GB", "IE"],
-                "marketStartTime":{"from": today ,"to": tomorrow}
+                "marketStartTime":{"from": time_min ,"to": time_max}
             }
         }
 
@@ -111,9 +118,15 @@ class betFairClient:
 
     def getEventUrls(self, event_id, event_name, t_thresh, is_bst):
 
-        time_min = (datetime.datetime.now() + datetime.timedelta(minutes = 10)).strftime('%Y-%m-%dT%H:%M:%SZ')
-        time_max = (datetime.datetime.now() + datetime.timedelta(hours = t_thresh)).strftime('%Y-%m-%dT%H:%M:%SZ')
-
+        time_min = (datetime.datetime.now() + datetime.timedelta(minutes = 0))
+        time_max = (datetime.datetime.now() + datetime.timedelta(hours = t_thresh))
+        if is_bst == True:
+            time_min = time_min - datetime.timedelta(hours = 1)
+            time_max = time_max - datetime.timedelta(hours = 1)
+        
+        time_min = time_min.strftime('%Y-%m-%dT%H:%M:%SZ')
+        time_max = time_max.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
         event_filter = {
             'filter': {
                 'eventIds': [event_id],
@@ -152,7 +165,7 @@ class betFairClient:
 
     def getAllBetfairUrls(self,t_thresh, is_bst):
 
-        events = self.getHorseRacingEvents()
+        events = self.getHorseRacingEvents(is_bst=is_bst)
         url_list = [self.getEventUrls(event_id, event_name, t_thresh, is_bst) for event_name, event_id in events]
         url_list = sum(url_list, [])
 
@@ -184,11 +197,15 @@ class betFairClient:
         print(markets)
         
 
-    def getEventMarkets(self, event_id, t_thresh):
-        time_min = (datetime.datetime.now() + datetime.timedelta(minutes = 10))
-        time_min_s = time_min.strftime('%Y-%m-%dT%H:%M:%SZ')
+    def getEventMarkets(self, event_id, t_thresh, is_bst):
 
+        time_min = (datetime.datetime.now() + datetime.timedelta(minutes = 0))
         time_max = (datetime.datetime.now() + datetime.timedelta(hours = t_thresh))
+        if is_bst == True:
+            time_min = time_min - datetime.timedelta(hours = 1)
+            time_max = time_max - datetime.timedelta(hours = 1)
+        
+        time_min_s = time_min.strftime('%Y-%m-%dT%H:%M:%SZ')
         time_max_s = time_max.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         filter = {
@@ -287,8 +304,8 @@ class betFairClient:
             horsePriceList.append(backLayPrices)
         return marketPlaceNumber, horsePriceList
     
-    def getHorsesForEvent(self, event_id, event_name, t_thresh):
-        markets, times = self.getEventMarkets(event_id, t_thresh)
+    def getHorsesForEvent(self, event_id, event_name, t_thresh, is_bst):
+        markets, times = self.getEventMarkets(event_id, t_thresh, is_bst)
         print(f"Getting horses for event {event_name}")
         #now = datetime.datetime.now()
         #urls = [buildURL(x, now, event_name) for x in times]
@@ -324,12 +341,12 @@ class betFairClient:
             
         return horsePriceList
     
-    def getAllHorsePrices(self,t_thresh):
+    def getAllHorsePrices(self,t_thresh, is_bst):
         all_horses = []
-        events = self.getHorseRacingEvents()
+        events = self.getHorseRacingEvents(is_bst=is_bst)
         
         for event_name, event_id in events:
-            horses_in_event = self.getHorsesForEvent(event_id, event_name, t_thresh)
+            horses_in_event = self.getHorsesForEvent(event_id, event_name, t_thresh, is_bst=is_bst)
             all_horses.append(horses_in_event)
 
             
@@ -340,8 +357,8 @@ if __name__ == '__main__':
 
     betCl = betFairClient()
     betCl.login()
-    betFairPrices = betCl.getAllHorsePrices(24)
-    urls = betCl.getAllBetfairUrls(24, is_bst=True)
+    betFairPrices = betCl.getAllHorsePrices(6, is_bst=True)
+    urls = betCl.getAllBetfairUrls(6, is_bst=True)
 
     for x in urls:
         print(x)

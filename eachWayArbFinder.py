@@ -5,6 +5,9 @@ from oddsCheckerScraper import scrape_odds_checker
 #from SmarketsRaceBuilder import smarketsRaceBuilder
 from kellyStaking import kelly
 from betfairClient.betfairClient import betFairClient
+import pandas as pd
+import datetime
+import time
 
 
 class matchedPrice:
@@ -88,8 +91,9 @@ def checkValue(exchange_market, winExchangeProbs, bookies_market, liquidity_sett
         else:
             exchange_placeOddsBack, exchange_placeOddsLay = placeOdds
             exchange_place_probs_back, exchange_place_probs_lay = 1/exchange_placeOddsBack, 1/exchange_placeOddsLay
-
-            if abs(exchange_place_probs_back - exchange_place_probs_lay) > liquidity_settings["placeMarketSpreadLimit"]:
+            
+            perc_spread = abs(exchange_place_probs_back - exchange_place_probs_lay)/exchange_place_probs_back
+            if perc_spread > liquidity_settings["placeMarketSpreadLimit"]:
                 #return(None, f"exchange's place market above spread limit. Spread of {abs(exchange_place_probs_back - exchange_place_probs_lay)}", "NoValue")
                 return matchedPrice(exchange_market.name,
                                 bookies_market.bookie,
@@ -157,7 +161,8 @@ def comparePrices(exchange_market, bookies_prices, liquidity_settings):
         exchange_odds_back, exchange_odds_lay = exchange_market.prices[0]
         exchange_probs_back, exchange_probs_lay = 1/exchange_odds_back, 1/exchange_odds_lay
 
-        if abs(exchange_probs_back - exchange_probs_lay) > liquidity_settings["winMarketSpreadLimit"]:
+        perc_spread = abs(exchange_probs_back - exchange_probs_lay)/exchange_probs_back
+        if perc_spread > liquidity_settings["winMarketSpreadLimit"]:
             return [matchedPrice(exchange_market.name,
                                 "All bookmakers",
                                 exchange_market.event_name,
@@ -214,15 +219,36 @@ def runValueFinder(h_thresh, is_bst,liquidity_settings,frac_kelly, logging, is_p
     else:
         for url in urls: print(url)
         oddsCheckerPrices = scrape_odds_checker(urls, logging)
-        betFairPrices = betCl.getAllHorsePrices(h_thresh)
+        betFairPrices = betCl.getAllHorsePrices(h_thresh, is_bst)
         valueFinds, allMarkets = checkValueRaces(oddsCheckerPrices, betFairPrices,liquidity_settings, frac_kelly)
         
         return betFairPrices, oddsCheckerPrices, valueFinds, allMarkets
+    
+def save_value_finds(value_finds:list, bookmakers_to_use) -> None:
+    data = [vars(obj) for obj in value_finds]
+    df = pd.DataFrame(data)
+    df = df[df.bookie.isin(bookmakers_to_use)]
+
+    date = datetime.datetime.now().date().__str__()
+    hour = datetime.datetime.now().hour.__str__()
+    minute = datetime.datetime.now().minute.__str__()
+
+    str_date = f"{date}_{hour}_{minute}"
+    df.to_csv("value_finds/" + str_date + "value_bets.csv", index=False)
+
 
 if __name__ == '__main__':
-    liq_settings = {"winMarketSpreadLimit": 1.0 , "placeMarketSpreadLimit": 1.0}
-    betFairPrices, oddsCheckerPrices, valueFinds, allMarkets = runValueFinder(24, True, liq_settings,1.0, False, True)
-    for val in valueFinds:
-        val.printInfo()
+    start = time.perf_counter()
+    
+    liq_settings = {"winMarketSpreadLimit": 0.3 , "placeMarketSpreadLimit": 0.3}
+    bookmakers_to_use = ["Bet365", "SkyBet"]
+
+    betfair_prices, odds_checker_prices, value_finds, all_markets = runValueFinder(8, True, liq_settings,1.0, False, True)
+    save_value_finds(value_finds, bookmakers_to_use)
+
+    stop = time.perf_counter()
+    time_taken = stop - start
+    print("Finished. Time taken:", time_taken)
+    
 
 

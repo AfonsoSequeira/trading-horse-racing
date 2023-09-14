@@ -8,7 +8,7 @@ import time
 import asyncio
 
 BOOKMAKERS = ["Bet365", "SkyBet", "PaddyPower", "WilliamHill", "888Sport",
-             "Betfair", "BetVictor", "Coral", "UniBet", "SpreadEx", "BetFred",
+             "Betfair", "BetVictor", "Coral", "UniBet", "SpreadEx", "BetFred", "BetMGM Uk",
              "BoyleSports", "10Bet", "StarSports", "BetUk", "SportingIndex", "LiveScoreBet",
              "QuinnBet", "BetWay", "LadBrokes", "BetGoodWin", "PariMatch", "VBet",
              "Tote", "BetFairExchange", "MatchBook"]
@@ -100,7 +100,7 @@ def scrape_odds(html_soup, bookMakerList, url, log):
                      (value.startswith("bc bs") or value.startswith("np o") or value.startswith("o np")))
     
     if log == True:
-        f = open(url + ".txt", "wb")
+        f = open("text_logs.txt", "wb")
         f.write(str(body).encode("utf-8"))
         f.close()
     
@@ -160,37 +160,6 @@ if __name__ == '__main__':
         "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/17:45/winner",
         "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/17:15/winner",
         "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/14:55/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/16:05/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/15:30/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/14:20/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/15:05/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/15:40/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/16:47/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/16:15/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/14:30/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Perth/17:22/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/17:30/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/19:00/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/16:55/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/20:30/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/18:30/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/20:00/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/19:30/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newcastle/18:00/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/17:05/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/19:15/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/17:40/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/18:45/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/16:30/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/15:20/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/15:55/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Galway/18:15/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/17:00/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/16:25/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/17:35/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/15:15/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/15:50/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Newton-Abbot/14:40/winner",
         ]
     
     prices = scrape_odds_checker(urls,log=False)
