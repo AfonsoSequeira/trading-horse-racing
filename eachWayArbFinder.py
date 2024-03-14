@@ -207,7 +207,7 @@ def checkValueRaces(bookieRaces, exchangeRaces,liquidity_settings, frac_kelly_va
              
     return valueFinds, assessedMarketList
 
-def runValueFinder(h_thresh, is_bst,liquidity_settings,frac_kelly, logging, is_parallel):
+def runValueFinder(h_thresh, is_bst,liquidity_settings,frac_kelly, logging, is_parallel, url_keyword=None):
 
     betCl = betFairClient()
     betCl.login()
@@ -217,6 +217,7 @@ def runValueFinder(h_thresh, is_bst,liquidity_settings,frac_kelly, logging, is_p
         print("no races within time frame")
         return betFairPrices, None
     else:
+        if url_keyword != None: urls = [url for url in urls if url_keyword in url.lower()] 
         for url in urls: print(url)
         oddsCheckerPrices = scrape_odds_checker(urls, logging)
         betFairPrices = betCl.getAllHorsePrices(h_thresh, is_bst)
@@ -240,10 +241,12 @@ def save_value_finds(value_finds:list, bookmakers_to_use) -> None:
 if __name__ == '__main__':
     start = time.perf_counter()
     
-    liq_settings = {"winMarketSpreadLimit": 0.3 , "placeMarketSpreadLimit": 0.3}
-    bookmakers_to_use = ["Bet365", "SkyBet"]
+    liq_settings = {"winMarketSpreadLimit": 0.4 , "placeMarketSpreadLimit": 0.4}
+    bookmakers_to_use = ["Bet365", "BetFred"]
 
-    betfair_prices, odds_checker_prices, value_finds, all_markets = runValueFinder(8, True, liq_settings,1.0, False, True)
+    betfair_prices, odds_checker_prices, value_finds, all_markets = runValueFinder(25, False, liq_settings,
+                                                                                   1.0, False, True,
+                                                                                     url_keyword="chelt")
     save_value_finds(value_finds, bookmakers_to_use)
 
     stop = time.perf_counter()

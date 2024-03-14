@@ -10,8 +10,8 @@ import asyncio
 BOOKMAKERS = ["Bet365", "SkyBet", "PaddyPower", "WilliamHill", "888Sport",
              "Betfair", "BetVictor", "Coral", "UniBet", "SpreadEx", "BetFred", "BetMGM Uk",
              "BoyleSports", "10Bet", "StarSports", "BetUk", "SportingIndex", "LiveScoreBet",
-             "QuinnBet", "BetWay", "LadBrokes", "BetGoodWin", "PariMatch", "VBet",
-             "Tote", "BetFairExchange", "MatchBook"]
+             "QuinnBet", "BetWay", "LadBrokes", "Midnite", "BetGoodWin", "VBet",
+             "BetFairExchange", "MatchBook"]
 
 class OddsCheckerPrice:
     
@@ -56,19 +56,35 @@ class OddsCheckerPrice:
 
 #     return htmls
 
-semaphore = asyncio.Semaphore(20)
+semaphore = asyncio.Semaphore(1)
 
 async def fetch(browser, url):
     async with semaphore:  # This will limit the number of concurrent tasks
-        context = await browser.new_context(user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.517 Safari/537.36')
-        page = await context.new_page()
         
+        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36'
+        #'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.517 Safari/537.36'
+        
+        headers = {
+            'User-Agent': user_agent,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'DNT': '1', # Do Not Track Request Header
+            'Upgrade-Insecure-Requests': '1',
+        }
+        
+        context = await browser.new_context(user_agent=user_agent, extra_http_headers=headers)
+        page = await context.new_page()
+        await page.wait_for_timeout(2000)
         response = await page.goto(url)
         if not response.ok:
             await context.close()
+            print(response)
             raise Exception(f"Failed to load {url}")
 
         print(f"Loaded page: {url}")
+
+        # Wait for 5 seconds to ensure the page has fully rendered
+        await page.wait_for_timeout(5000)
         html_content = await page.inner_html('div#outer-container')
         
         await context.close()  # Close the context after fetching to free up resources
@@ -96,7 +112,7 @@ def scrape_odds(html_soup, bookMakerList, url, log):
     
     #soup = BeautifulSoup(prettyHTML, features="lxml")
     body = html_soup.body
-    pricesHtml = body.find_all("td", class_= lambda value: value and 
+    all_pricesHtml = body.find_all("td", class_= lambda value: value and 
                      (value.startswith("bc bs") or value.startswith("np o") or value.startswith("o np")))
     
     if log == True:
@@ -104,7 +120,7 @@ def scrape_odds(html_soup, bookMakerList, url, log):
         f.write(str(body).encode("utf-8"))
         f.close()
     
-    pricesHtml = list(split(pricesHtml, len(bookMakerList)))
+    pricesHtml = list(split(all_pricesHtml, len(bookMakerList)))
     
     namesHtml = body.find_all("a", class_ = "popup selTxt")
     
@@ -156,10 +172,13 @@ def scrape_odds_checker(url_list, log=False):
 
 if __name__ == '__main__':
     urls =  [
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/16:40/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/17:45/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/17:15/winner",
-        "https://www.oddschecker.com/horse-racing/2023-09-11-Brighton/14:55/winner",
+        "https://www.oddschecker.com/horse-racing/2024-03-14-cheltenham/13:30/winner",
+        "https://www.oddschecker.com/horse-racing/2024-03-14-cheltenham/14:10/winner",
+        "https://www.oddschecker.com/horse-racing/2024-03-14-cheltenham/14:50/winner",
+        "https://www.oddschecker.com/horse-racing/2024-03-14-cheltenham/15:30/winner",
+        "https://www.oddschecker.com/horse-racing/2024-03-14-cheltenham/16:10/winner",
+        "https://www.oddschecker.com/horse-racing/2024-03-14-cheltenham/16:50/winner",
+        "https://www.oddschecker.com/horse-racing/2024-03-14-cheltenham/17:30/winner",
         ]
     
     prices = scrape_odds_checker(urls,log=False)

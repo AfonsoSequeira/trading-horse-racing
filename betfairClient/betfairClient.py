@@ -29,7 +29,7 @@ class betFairHorse:
         self.tag = tag
         self.event_name = event_name
         self.date = date
-        self.prices = [None, None, None, None, None, None, None]
+        self.prices = [None, None, None, None, None, None, None,None,None,None, None]
         
     def addPrice(self, place_number, price):
         self.prices[place_number - 1] = price
@@ -211,7 +211,7 @@ class betFairClient:
         filter = {
             'filter': {
                 'eventIds': [event_id],
-                'marketTypeCodes': ['WIN', 'OTHER_PLACE'],
+                'marketTypeCodes': ['WIN', 'PLACE', 'OTHER_PLACE'],
                 'marketBettingType':'ODDS',
                 'marketCountries': ["GB","IE"],
                 "numberOfWinners": 1,
@@ -246,6 +246,7 @@ class betFairClient:
             market_id = market["marketId"]
             startTime = market["marketStartTime"]
             market_type = market["description"]["marketType"]
+            market_name = market["marketName"]
             
             # Convert the string to a datetime object
             startTime = datetime.datetime.strptime(startTime, "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -257,7 +258,7 @@ class betFairClient:
                 continue
             else:
                 horses = [x["runnerName"] for x in market["runners"]]
-                compList.append((market_id, startDate, horses))
+                compList.append((market_id, market_name, startDate, horses))
                 times.append(startTime)
         
         event_times = list(set(times))
@@ -300,7 +301,8 @@ class betFairClient:
                       
             else:
                 continue
-
+            
+            #print("         ", backLayPrices)
             horsePriceList.append(backLayPrices)
         return marketPlaceNumber, horsePriceList
     
@@ -314,10 +316,9 @@ class betFairClient:
         allRaces = pd.DataFrame(columns = ["EventName", "Date","Places" , "RunnerName", "Prices"])
         for market in markets:
             data = []
-            market_id, date, runnerNames = market
+            market_id, market_name, date, runnerNames = market
             places, prices = self.getMarketPrices(market_id)
-            
-        
+
             for i in range(0, len(prices)):
                 #data.append((event_name, date, places, runnerNames[i], prices[i]))
                 allRaces.loc[len(allRaces)]= [event_name, date, places, runnerNames[i], prices[i]]
@@ -357,8 +358,8 @@ if __name__ == '__main__':
 
     betCl = betFairClient()
     betCl.login()
-    betFairPrices = betCl.getAllHorsePrices(6, is_bst=True)
-    urls = betCl.getAllBetfairUrls(6, is_bst=True)
+    #betFairPrices = betCl.getAllHorsePrices(24, is_bst=True)
+    urls = betCl.getAllBetfairUrls(24, is_bst=True)
 
     for x in urls:
         print(x)
